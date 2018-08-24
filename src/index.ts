@@ -168,8 +168,16 @@ class Board {
 
 const board = new Board(10, 10)
 
+board.addShip(1)
+board.addShip(1)
+board.addShip(1)
+board.addShip(1)
+board.addShip(2)
+board.addShip(2)
+board.addShip(2)
 board.addShip(3)
-console.log(JSON.stringify(board.board))
+board.addShip(3)
+board.addShip(4)
 board.print(true)
 
 function inputLoop (callback: Function) {
