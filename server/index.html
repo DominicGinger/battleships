@@ -23,12 +23,29 @@
       if (!window.WebSocket) {
         container.innerHTML += 'Your browser does not support WebSockets'
       } else {
-        //const socket = new WebSocket('wss://battleships-ivcmfmtute.now.sh')
         const socket = new WebSocket('ws://localhost:3004')
         socket.onopen = () => container.innerHTML += '<p>Socket is open</p>'
         socket.onmessage = ({ data }) => container.innerHTML += '<p> response:' + data + '</p>'
         socket.onclose = () => container.innerHTML += '<p>Socket closed</p>'
 
+        if (window.location.pathname) {
+          handleClient2(socket, window.location.pathname)
+        } else {
+          handleClient1(socket)
+        }
+      }
+
+      function handleClient1(socket) {
+        document.querySelector('#send').addEventListener('click', e => {
+          socket.send(JSON.stringify({
+            Data: document.querySelector('#datafield').value,
+            Type: document.querySelector('#typefield').value,
+            Key: document.querySelector('#keyfield').value
+          }))
+        })
+      }
+
+      function handleClient2(socket) {
         document.querySelector('#send').addEventListener('click', e => {
           socket.send(JSON.stringify({
             Data: document.querySelector('#datafield').value,
