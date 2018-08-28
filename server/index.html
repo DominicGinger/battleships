@@ -1,40 +1,41 @@
 <html>
   <head>
-    <title>WebSocket demo</title>
+    <title>WebSockets</title>
   </head>
   <body>
 
     <div>
-      <form>
-        <label for="numberfield">Number</label>
-        <input type="text" id="numberfield" placeholder="12"/><br />
-        <button type="button" id="sendBtn">Send</button>
-      </form>
+      Type:
+      <input type="text" id="typefield"/>
+      <br />
+      Data:
+      <input type="text" id="datafield"/>
+      <br />
+      Key:
+      <input type="text" id="keyfield"/>
+      <br />
+      <button type="button" id="send">Send</button>
     </div>
     <div id="container"></div>
 
     <script type="text/javascript">
-      (function () {
-        if (window.WebSocket === undefined) {
-          document.querySelector('#container').append('Your browser does not support WebSockets');
-          return;
-        }
-        var socket = new WebSocket('ws://localhost:3004/ws'),
-          container = document.querySelector('#container')
-        socket.onopen = function() {
-          container.innerHTML += '<p>Socket is open</p>';
-        };
-        socket.onmessage = function (e) {
-          container.innerHTML += '<p> Got some shit:' + e.data + '</p>';
-        }
-        socket.onclose = function () {
-          container.innerHTML += '<p>Socket closed</p>';
-        }
-        document.querySelector('#sendBtn').addEventListener('click', e => {
-          e.preventDefault();
-          socket.send(JSON.stringify({ Num: parseInt(document.querySelector('#numberfield').value) }));
-        });
-      })();
+      const container = document.querySelector('#container')
+      if (!window.WebSocket) {
+        container.innerHTML += 'Your browser does not support WebSockets'
+      } else {
+        const socket = new WebSocket('ws://localhost:3004')
+        socket.onopen = () => container.innerHTML += '<p>Socket is open</p>'
+        socket.onmessage = ({ data }) => container.innerHTML += '<p> response:' + data + '</p>'
+        socket.onclose = () => container.innerHTML += '<p>Socket closed</p>'
+
+        document.querySelector('#send').addEventListener('click', e => {
+          socket.send(JSON.stringify({
+            Data: document.querySelector('#datafield').value,
+            Type: document.querySelector('#typefield').value,
+            Key: document.querySelector('#keyfield').value
+          }))
+        })
+      }
     </script>
   </body>
 </html>

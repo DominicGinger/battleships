@@ -3,30 +3,35 @@ package main
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
-	"io/ioutil"
+    "math/rand"
 	"net/http"
 )
 
+var keys = [...]string { "the", "and", "for", "are", "but", "not", "you", "all", "any", "can", "her", "was", "one", "our", "out", "day", "get", "has", "him", "his", "how", "man", "      new", "now", "old", "see", "two", "way", "who", "boy", "did", "its", "let", "put", "say", "she", "too", "use", "dad", "mom", "act", "bar", "car", "dew", "eat", "far", "gym", "hey",       "ink", "jet", "key", "log", "mad", "nap", "odd", "pal", "ram", "saw", "tan", "urn", "vet", "wed", "yap", "zoo", "why", "try" }
+
+
 type msg struct {
-	Num int
+    Data string
+    Type string
+    Key string
 }
 
+type Client1 struct {
+    Offer string
+    Conn *websocket.Conn
+}
+
+const storageLimit = 1000
+var data map[string]Client1
+
 func main() {
-	http.HandleFunc("/ws", wsHandler)
-	http.HandleFunc("/", rootHandler)
+    data = make(map[string]Client1)
+	http.HandleFunc("/", handler)
 
 	panic(http.ListenAndServe(":3004", nil))
 }
 
-func rootHandler(w http.ResponseWriter, r *http.Request) {
-	content, err := ioutil.ReadFile("index.html")
-	if err != nil {
-		fmt.Println("Could not open file.", err)
-	}
-	fmt.Fprintf(w, "%s", content)
-}
-
-func wsHandler(w http.ResponseWriter, r *http.Request) {
+func handler(w http.ResponseWriter, r *http.Request) {
 	conn, err := websocket.Upgrade(w, r, w.Header(), 1024, 1024)
 	if err != nil {
 		http.Error(w, "Could not open websocket connection", http.StatusBadRequest)
@@ -40,15 +45,48 @@ func echo(conn *websocket.Conn) {
 	for {
 		m := msg{}
 
-		err := conn.ReadJSON(&m)
-		if err != nil {
+		if err := conn.ReadJSON(&m); err != nil {
 			fmt.Println("Error reading json.", err)
 		}
 
 		fmt.Printf("Got message: %#v\n", m)
+        if (m.Type == "offer") {
+            handleOffer(conn, &m)
+        }
+        if (m.Type == "getOffer") {
+            handleGetOffer(conn, &m)
+        }
+        if (m.Type == "answer") {
+            handleAnswer(conn, &m)
+        }
 
-		if err = conn.WriteJSON(m); err != nil {
+        if err := conn.WriteJSON(m); err != nil {
 			fmt.Println(err)
 		}
 	}
+}
+
+func handleOffer(conn *websocket.Conn, m *msg) {
+    if (len(data) >= storageLimit) {
+        data = make(map[string]Client1)
+    }
+
+    key := randomKey()
+    conn.WriteJSON(key)
+    game := Client1{ Offer: m.Data, Conn: conn }
+    data[key] = game
+}
+
+func handleGetOffer(conn *websocket.Conn, m *msg) {
+    game := data[m.Key]
+    conn.WriteJSON(game.Offer)
+}
+
+func handleAnswer(conn *websocket.Conn, m *msg) {
+    client1 := data[m.Key]
+    client1.Conn.WriteJSON(m.Data)
+}
+
+func randomKey() string {
+    return keys[rand.Intn(len(keys))]
 }
