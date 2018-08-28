@@ -20,6 +20,12 @@ function handleInput (x: number, y:number): boolean {
   board2.attack(Math.floor(Math.random()*size), Math.floor(Math.random()*size))
   board2.print(false)
 
+  if (board1.checkFinished()){
+    console.log('you won!')
+  } else if (board2.checkFinished()) {
+    console.log('you lost!')
+  }
+
   return board1.checkFinished() || board2.checkFinished()
 }
 
