@@ -5,27 +5,27 @@ import (
 	"github.com/gorilla/websocket"
     "math/rand"
 	"net/http"
+    "time"
 )
 
-var keys = [...]string { "the", "and", "for", "are", "but", "not", "you", "all", "any", "can", "her", "was", "one", "our", "out", "day", "get", "has", "him", "his", "how", "man", "new", "now", "old", "see", "two", "way", "who", "boy", "did", "its", "let", "put", "say", "she", "too", "use", "dad", "mom", "act", "bar", "car", "dew", "eat", "far", "gym", "hey", "ink", "jet", "key", "log", "mad", "nap", "odd", "pal", "ram", "saw", "tan", "urn", "vet", "wed", "yap", "zoo", "why", "try" }
-
-
 type msg struct {
-    Data string
     Type string
+    Data string
     Key string
 }
 
-type Client1 struct {
+type ClientDetails struct {
     Offer string
     Conn *websocket.Conn
 }
 
-const storageLimit = 100
-var data map[string]Client1
+const storageLimit = 1000
+var data map[string]ClientDetails
 
 func main() {
-    data = make(map[string]Client1)
+    rand.Seed(time.Now().UTC().UnixNano())
+    data = make(map[string]ClientDetails)
+
 	http.HandleFunc("/", handler)
 
 	panic(http.ListenAndServe(":3004", nil))
@@ -38,24 +38,24 @@ func handler(w http.ResponseWriter, r *http.Request) {
         return
 	}
 
-	go echo(conn)
+	go handleMessage(conn)
 }
 
-func echo(conn *websocket.Conn) {
+func handleMessage(conn *websocket.Conn) {
 	for {
 		m := msg{}
 
 		if err := conn.ReadJSON(&m); err != nil {
-			fmt.Println("Error reading json.", err)
+			fmt.Println("Error reading JSON", err)
 		}
 
-		fmt.Printf("Got message: %#v\n", m)
+		fmt.Printf("Message: %#v\n", m)
         switch m.Type {
-        case "offer":
+        case "setOffer":
             handleOffer(conn, &m)
         case "getOffer":
             handleGetOffer(conn, &m)
-        case "answer":
+        case "setAnswer":
             handleAnswer(conn, &m)
         }
     }
@@ -63,13 +63,12 @@ func echo(conn *websocket.Conn) {
 
 func handleOffer(conn *websocket.Conn, m *msg) {
     if (len(data) >= storageLimit) {
-        data = make(map[string]Client1)
+        data = make(map[string]ClientDetails)
     }
 
     key := randomKey()
     conn.WriteJSON(key)
-    game := Client1{ Offer: m.Data, Conn: conn }
-    data[key] = game
+    data[key] = ClientDetails{ Offer: m.Data, Conn: conn }
 }
 
 func handleGetOffer(conn *websocket.Conn, m *msg) {
@@ -83,5 +82,11 @@ func handleAnswer(conn *websocket.Conn, m *msg) {
 }
 
 func randomKey() string {
-    return keys[rand.Intn(len(keys))]
+    letter := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+    b := make([]rune, 4)
+    for i := range b {
+        b[i] = letter[rand.Intn(len(letter))]
+    }
+    return string(b)
 }
