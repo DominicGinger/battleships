@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>WebSockets</title>
+    <title>BattleShips</title>
   </head>
   <body>
 
@@ -23,6 +23,7 @@
       if (!window.WebSocket) {
         container.innerHTML += 'Your browser does not support WebSockets'
       } else {
+        //const socket = new WebSocket('wss://battleships-ivcmfmtute.now.sh')
         const socket = new WebSocket('ws://localhost:3004')
         socket.onopen = () => container.innerHTML += '<p>Socket is open</p>'
         socket.onmessage = ({ data }) => container.innerHTML += '<p> response:' + data + '</p>'

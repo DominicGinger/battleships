@@ -21,7 +21,7 @@ type Client1 struct {
     Conn *websocket.Conn
 }
 
-const storageLimit = 1000
+const storageLimit = 100
 var data map[string]Client1
 
 func main() {
@@ -50,20 +50,15 @@ func echo(conn *websocket.Conn) {
 		}
 
 		fmt.Printf("Got message: %#v\n", m)
-        if (m.Type == "offer") {
+        switch m.Type {
+        case "offer":
             handleOffer(conn, &m)
-        }
-        if (m.Type == "getOffer") {
+        case "getOffer":
             handleGetOffer(conn, &m)
-        }
-        if (m.Type == "answer") {
+        case "answer":
             handleAnswer(conn, &m)
         }
-
-        if err := conn.WriteJSON(m); err != nil {
-			fmt.Println(err)
-		}
-	}
+    }
 }
 
 func handleOffer(conn *websocket.Conn, m *msg) {
