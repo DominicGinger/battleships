@@ -1,29 +1,26 @@
 import { Board } from './board'
 import { inputLoop } from './cli'
 
-const board = new Board(10, 10)
+const size = 10
 
-board.addShip(1)
-board.addShip(1)
-board.addShip(1)
-board.addShip(1)
-board.addShip(2)
-board.addShip(2)
-board.addShip(2)
-board.addShip(3)
-board.addShip(3)
-board.addShip(4)
-board.print(true)
+const board1 = new Board(size, size)
+const board2 = new Board(size, size)
 
-function handleInput (text: string): boolean {
-  const [x, y] = text.split(',')
+board1.print(true)
+console.log('')
+board2.print(true)
 
-  if (board.attack(parseInt(x), parseInt(y))) {
+function handleInput (x: number, y:number): boolean {
+  if (board1.attack(x, y)) {
     console.log('HIT')
   }
-  board.print(false)
+  board1.print(false)
 
-  return board.checkFinished()
+  console.log('player 2 turn')
+  board2.attack(Math.floor(Math.random()*size), Math.floor(Math.random()*size))
+  board2.print(false)
+
+  return board1.checkFinished() || board2.checkFinished()
 }
 
 inputLoop(handleInput)

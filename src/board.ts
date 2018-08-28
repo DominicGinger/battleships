@@ -9,8 +9,12 @@ type Tile = {
 export class Board {
   board: Array<Array<Tile>>
   ships: Array<Ship>
+    width: number
+    height: number
 
     constructor(width: number, height: number) {
+      this.width = width
+      this.height = height 
       this.board = []
       this.ships = []
       for (let x = 0; x < width; x++) {
@@ -20,6 +24,17 @@ export class Board {
           this.board[x].push(newTile)
         }
       }
+
+      this.addShip(1)
+      this.addShip(1)
+      this.addShip(1)
+      this.addShip(1)
+      this.addShip(2)
+      this.addShip(2)
+      this.addShip(2)
+      this.addShip(3)
+      this.addShip(3)
+      this.addShip(4)
     }
 
   print(show: boolean = true): void {
@@ -58,13 +73,11 @@ export class Board {
     if (tries > 100) {
       return false
     }
-    const width = this.board[0].length
-    const height = this.board.length
-    const x = Math.floor(Math.random() * width)
-    const y = Math.floor(Math.random() * height)
+    const x = Math.floor(Math.random() * this.width)
+    const y = Math.floor(Math.random() * this.height)
 
     if (Math.floor(Math.random() * 2)) {
-      if (x + length > width) {
+      if (x + length > this.width) {
         return this.addShip(length, tries + 1)
       }
 
@@ -83,7 +96,7 @@ export class Board {
 
       return true
     } else {
-      if (y + length > height) {
+      if (y + length > this.height) {
         return this.addShip(length, tries + 1)
       }
 
@@ -105,7 +118,7 @@ export class Board {
   }
 
   attack(x: number, y: number): boolean {
-    if (this.board[y][x].placed) {
+    if (x < 0 || x >= this.width || y < 0 || y >= this.height || this.board[y][x].placed) {
       return false
     }
     this.board[y][x].placed = true
