@@ -23,16 +23,34 @@ sendButton.addEventListener('click', sendMessage, false);
 function handleClient1(socket) {
   document.querySelector('#connectButton').addEventListener('click', e => {
     socket.onmessage = ({ data }) => {
-      const answer = JSON.parse(JSON.parse(data))
-      localConnection.setRemoteDescription(answer)
+      const sess = JSON.parse(JSON.parse(data))
+
+      if (sess.type === 'answer') {
+        localConnection.setRemoteDescription(sess)
+      } else {
+        localConnection.addIceCandidate(sess)
+      }
     }
-    localConnection = new RTCPeerConnection();
+    localConnection = new RTCPeerConnection({iceServers: [
+      {urls: ["stun:stun.services.mozilla.com:3478"] },
+    ]});
     sendChannel = localConnection.createDataChannel("sendChannel");
     sendChannel.onopen = handleSendChannelStatusChange;
     sendChannel.onclose = handleSendChannelStatusChange;
 
-  localConnection.createOffer()
-    .then(offer => localConnection.setLocalDescription(offer))
+    localConnection.onicecandidate = e => {
+      if (!e.candidate) {
+        return
+      }
+      socket.send(JSON.stringify({
+        Type: 'ice',
+        Data: JSON.stringify(e.candidate),
+        Key: key
+      }))
+    }
+
+    localConnection.createOffer()
+      .then(offer => localConnection.setLocalDescription(offer))
       .then(() => socket.send(JSON.stringify({
         Type: 'setOffer',
         Data: JSON.stringify(localConnection.localDescription)
@@ -49,21 +67,39 @@ function handleClient2(socket) {
     }))
 
     socket.onmessage = ({ data }) => {
-      const offer = JSON.parse(JSON.parse(data))
-      remoteConnection.setRemoteDescription(offer)
-      remoteConnection.createAnswer()
-        .then(answer => remoteConnection.setLocalDescription(answer))
-        .then(() => {
-          socket.send(JSON.stringify({
-            Type: 'setAnswer',
-            Data: JSON.stringify(remoteConnection.localDescription),
-            Key: key
-          }))
-        })
+      const sess = JSON.parse(JSON.parse(data))
+
+      if (sess.type === 'offer') {
+        remoteConnection.setRemoteDescription(sess)
+        remoteConnection.createAnswer()
+          .then(answer => remoteConnection.setLocalDescription(answer))
+          .then(() => {
+            socket.send(JSON.stringify({
+              Type: 'setAnswer',
+              Data: JSON.stringify(remoteConnection.localDescription),
+              Key: key
+            }))
+          })
+      } else {
+        remoteConnection.addIceCandidate(sess)
+      }
     }
 
-    remoteConnection = new RTCPeerConnection();
+    remoteConnection = new RTCPeerConnection({iceServers: [
+      {url: "stun:stun.services.mozilla.com:3478"},
+    ]});
     remoteConnection.ondatachannel = receiveChannelCallback;
+
+    remoteConnection.onicecandidate = e => {
+      if (!e.candidate) {
+        return
+      }
+      socket.send(JSON.stringify({
+        Type: 'ice',
+        Data: JSON.stringify(e.candidate),
+        Key: key
+      }))
+    }
   })
 }
 

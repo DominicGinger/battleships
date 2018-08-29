@@ -16,7 +16,8 @@ type msg struct {
 
 type ClientDetails struct {
     Offer string
-    Conn *websocket.Conn
+    Conn1 *websocket.Conn
+    Conn2 *websocket.Conn
 }
 
 const storageLimit = 1000
@@ -25,6 +26,7 @@ var data map[string]ClientDetails
 func main() {
     rand.Seed(time.Now().UTC().UnixNano())
     data = make(map[string]ClientDetails)
+    data["a"] = ClientDetails{}
 
 	http.HandleFunc("/", handler)
 
@@ -58,6 +60,8 @@ func handleMessage(conn *websocket.Conn) {
             handleGetOffer(conn, &m)
         case "setAnswer":
             handleAnswer(conn, &m)
+        case "ice":
+            handleIce(conn, &m)
         }
     }
 }
@@ -68,18 +72,29 @@ func handleOffer(conn *websocket.Conn, m *msg) {
     }
 
     key := randomKey()
-    conn.WriteJSON(key)
-    data[key] = ClientDetails{ Offer: m.Data, Conn: conn }
+    // conn.WriteJSON(&msg{ Key: key })
+    data[key] = ClientDetails{ Offer: m.Data, Conn1: conn }
 }
 
 func handleGetOffer(conn *websocket.Conn, m *msg) {
     game := data[m.Key]
     conn.WriteJSON(game.Offer)
+    data[m.Key] = ClientDetails{ Offer: data[m.Key].Offer, Conn1: data[m.Key].Conn1, Conn2: conn }
 }
 
 func handleAnswer(conn *websocket.Conn, m *msg) {
     client1 := data[m.Key]
-    client1.Conn.WriteJSON(m.Data)
+    client1.Conn1.WriteJSON(m.Data)
+}
+
+func handleIce(conn *websocket.Conn, m *msg) {
+    client1 := data[m.Key]
+    if (client1.Conn1 != nil) {
+        client1.Conn1.WriteJSON(m.Data)
+    }
+    if (client1.Conn2 != nil) {
+        client1.Conn2.WriteJSON(m.Data)
+    }
 }
 
 func randomKey() string {
