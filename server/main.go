@@ -83,11 +83,12 @@ func handleAnswer(conn *websocket.Conn, m *msg) {
 }
 
 func randomKey() string {
-    letter := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+    return "a"
+    // letter := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
-    b := make([]rune, 4)
-    for i := range b {
-        b[i] = letter[rand.Intn(len(letter))]
-    }
-    return string(b)
+    // b := make([]rune, 4)
+    // for i := range b {
+    //     b[i] = letter[rand.Intn(len(letter))]
+    // }
+    // return string(b)
 }
