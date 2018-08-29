@@ -5,54 +5,152 @@
   <body>
 
     <div>
-      Type:
-      <input type="text" id="typefield"/>
-      <br />
-      Data:
-      <input type="text" id="datafield"/>
-      <br />
-      Key:
-      <input type="text" id="keyfield"/>
-      <br />
       <button type="button" id="send">Send</button>
     </div>
     <div id="container"></div>
 
     <script type="text/javascript">
       const container = document.querySelector('#container')
+      let offerPeer, socket, answerPeer, key, offerDataChannel, answerDataChannel
+      const peerConnectionConfig = {
+        'iceServers': [
+          {'url': 'stun:stun.l.google.com:19302'}
+        ]
+      }
+
       if (!window.WebSocket) {
         container.innerHTML += 'Your browser does not support WebSockets'
       } else {
-        const socket = new WebSocket('ws://localhost:3004')
+        socket = new WebSocket('ws://localhost:3004')
         socket.onopen = () => container.innerHTML += '<p>Socket is open</p>'
-        socket.onmessage = ({ data }) => container.innerHTML += '<p> response:' + data + '</p>'
         socket.onclose = () => container.innerHTML += '<p>Socket closed</p>'
 
-        if (window.location.pathname) {
-          handleClient2(socket, window.location.pathname)
-        } else {
+        if (window.location.search === '') {
           handleClient1(socket)
+        } else {
+          key = window.location.search.split('=')[1]
+          handleClient2(socket)
         }
       }
 
       function handleClient1(socket) {
+        offerPeer = new RTCPeerConnection(peerConnectionConfig)
+        offerPeer.onicecandidate = onOfferPeerIceCandidate
+        offerDataChannel = offerPeer.createDataChannel('dataChannel', {
+          maxRetransmits: 3,
+          reliable: true
+        });
+        addDataChannelListeners(offerDataChannel, 'offerPeer');
+
         document.querySelector('#send').addEventListener('click', e => {
-          socket.send(JSON.stringify({
-            Data: document.querySelector('#datafield').value,
-            Type: document.querySelector('#typefield').value,
-            Key: document.querySelector('#keyfield').value
-          }))
+          console.log('send')
+          offerPeer.createOffer(onCreatedOffer, handleError('error creating offer'));
+          socket.onmessage = ({ data }) => {
+            container.innerHTML += '<p> response:' + data + '</p>'
+            offerPeer.setRemoteDescription(JSON.parse(JSON.parse(data)), onSetRemoteAnswer,
+              handleError('error setting offerPeer remote description'))
+          }
         })
       }
 
       function handleClient2(socket) {
+        answerPeer = new RTCPeerConnection(peerConnectionConfig)
+        answerPeer.ondatachannel = onAnswerPeerDataChannel
+        answerPeer.onicecandidate = onAnswerPeerIceCandidate
+
         document.querySelector('#send').addEventListener('click', e => {
           socket.send(JSON.stringify({
-            Data: document.querySelector('#datafield').value,
-            Type: document.querySelector('#typefield').value,
-            Key: document.querySelector('#keyfield').value
+            Type: 'getOffer',
+            Key: key
           }))
+
+          socket.onmessage = ({ data }) => {
+            container.innerHTML += '<p> response:' + data + '</p>'
+            answerPeer.setRemoteDescription(JSON.parse(JSON.parse(data)), onSetRemoteOffer,
+    handleError('error setting remote description for answerPeer'));
+          }
         })
+      }
+
+      function onSetRemoteOffer() {
+        console.log('set remote description for answerPeer');
+        answerPeer.createAnswer(onCreatedAnswer,
+          handleError('error creating answer'));
+      }
+
+      function onCreatedAnswer(answer) {
+        console.log('created answer');
+        answer = new RTCSessionDescription(answer);
+        answerPeer.setLocalDescription(answer, onSetLocalAnswer,
+          handleError('error setting answerPeer local description'));
+
+        socket.send(JSON.stringify({
+          Data: JSON.stringify(answer),
+          Type: 'setAnswer',
+          Key: key
+        }))
+      }
+
+      function onCreatedOffer(offer) {
+        console.log('created offer', offer);
+        offer = new RTCSessionDescription(offer);
+        offerPeer.setLocalDescription(offer, () => console.log('set offer locally'),
+          handleError('error setting local description for offerPeer'));
+
+        socket.send(JSON.stringify({
+          Data: JSON.stringify(offer),
+          Type: 'setOffer'
+        }))
+      }
+
+      function handleError(message) {
+        return function onError(err) {
+          console.log(message);
+        };
+      }
+
+      function addDataChannelListeners(channel, label) {
+        channel.onclose = function(event) {
+          console.log(label + ' data channel close', event);
+        };
+        channel.onerror = function(err) {
+          console.log(label + ' data channel error', event);
+        };
+        channel.onmessage = function(event) {
+          console.log(label + ' data channel message', event);
+        };
+        channel.onopen = function(event) {
+          console.log(label + ' data channel open', event);
+          channel.send('hello from ' + label);
+        };
+      }
+
+      function onOfferPeerIceCandidate(event) {
+        console.log('offerPeer ice candidate', event);
+        if (event && event.candidate) {
+ //         offerPeer.addIceCandidate(event.candidate);
+        }
+      }
+
+      function onAnswerPeerDataChannel(event) {
+        console.log('answerPeer data channel', event);
+        answerDataChannel = event.channel
+        addDataChannelListeners(event.channel, 'answerPeer');
+      }
+
+      function onAnswerPeerIceCandidate(event) {
+        console.log('answerPeer ice candidate', event);
+        if (event && event.candidate) {
+//          answerPeer.addIceCandidate(event.candidate);
+        }
+      }
+
+      function onSetLocalAnswer() {
+        console.log('set local description for answerPeer');
+      }
+
+      function onSetRemoteAnswer() {
+        console.log('set remote description for offerPeer');
       }
     </script>
   </body>

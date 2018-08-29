@@ -47,6 +47,7 @@ func handleMessage(conn *websocket.Conn) {
 
 		if err := conn.ReadJSON(&m); err != nil {
 			fmt.Println("Error reading JSON", err)
+            return
 		}
 
 		fmt.Printf("Message: %#v\n", m)
