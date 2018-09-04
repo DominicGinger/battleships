@@ -8,25 +8,26 @@ import (
     "time"
 )
 
-type msg struct {
+type Msg struct {
     Type string
     Data string
     Key string
 }
 
-type ClientDetails struct {
+type Connection struct {
     Offer string
-    Conn1 *websocket.Conn
-    Conn2 *websocket.Conn
+    Client1 *websocket.Conn
+    Client2 *websocket.Conn
 }
 
 const storageLimit = 1000
-var data map[string]ClientDetails
+var data map[string]Connection
 
 func main() {
     rand.Seed(time.Now().UTC().UnixNano())
-    data = make(map[string]ClientDetails)
-    data["a"] = ClientDetails{}
+
+    data = make(map[string]Connection)
+    data["a"] = Connection{}
 
 	http.HandleFunc("/", handler)
 
@@ -45,7 +46,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func handleMessage(conn *websocket.Conn) {
 	for {
-		m := msg{}
+		m := Msg{}
 
 		if err := conn.ReadJSON(&m); err != nil {
 			fmt.Println("Error reading JSON", err)
@@ -66,44 +67,44 @@ func handleMessage(conn *websocket.Conn) {
     }
 }
 
-func handleOffer(conn *websocket.Conn, m *msg) {
+func handleOffer(conn *websocket.Conn, m *Msg) {
     if (len(data) >= storageLimit) {
-        data = make(map[string]ClientDetails)
+        data = make(map[string]Connection)
     }
 
     key := randomKey()
-    // conn.WriteJSON(&msg{ Key: key })
-    data[key] = ClientDetails{ Offer: m.Data, Conn1: conn }
+    conn.WriteJSON(Msg{ Type: "key", Key: key })
+
+    data[key] = Connection{ Offer: m.Data, Client1: conn }
 }
 
-func handleGetOffer(conn *websocket.Conn, m *msg) {
-    game := data[m.Key]
-    conn.WriteJSON(game.Offer)
-    data[m.Key] = ClientDetails{ Offer: data[m.Key].Offer, Conn1: data[m.Key].Conn1, Conn2: conn }
+func handleGetOffer(conn *websocket.Conn, m *Msg) {
+    connection := data[m.Key]
+    conn.WriteJSON(Msg{ Type: "offer", Data: connection.Offer })
+    data[m.Key] = Connection{ Offer: data[m.Key].Offer, Client1: data[m.Key].Client1, Client2: conn }
 }
 
-func handleAnswer(conn *websocket.Conn, m *msg) {
+func handleAnswer(conn *websocket.Conn, m *Msg) {
+    connection := data[m.Key]
+    connection.Client1.WriteJSON(Msg{ Type: "answer", Data: m.Data })
+}
+
+func handleIce(conn *websocket.Conn, m *Msg) {
     client1 := data[m.Key]
-    client1.Conn1.WriteJSON(m.Data)
-}
-
-func handleIce(conn *websocket.Conn, m *msg) {
-    client1 := data[m.Key]
-    if (client1.Conn1 != nil) {
-        client1.Conn1.WriteJSON(m.Data)
+    if (client1.Client1 != nil) {
+        client1.Client1.WriteJSON(Msg{ Type: "ice", Data: m.Data })
     }
-    if (client1.Conn2 != nil) {
-        client1.Conn2.WriteJSON(m.Data)
+    if (client1.Client2 != nil) {
+        client1.Client2.WriteJSON(Msg{ Type: "ice", Data: m.Data })
     }
 }
 
 func randomKey() string {
-    return "a"
-    // letter := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+    letter := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
-    // b := make([]rune, 4)
-    // for i := range b {
-    //     b[i] = letter[rand.Intn(len(letter))]
-    // }
-    // return string(b)
+    b := make([]rune, 3)
+    for i := range b {
+        b[i] = letter[rand.Intn(len(letter))]
+    }
+    return string(b)
 }

@@ -20,15 +20,24 @@ let localConnection, remoteConnection, sendChannel, receiveChannel
 disconnectButton.addEventListener('click', disconnectPeers, false);
 sendButton.addEventListener('click', sendMessage, false);
 
+      messageInputBox.disabled = false;
+      sendButton.disabled = false;
+      disconnectButton.disabled = false;
 function handleClient1(socket) {
   document.querySelector('#connectButton').addEventListener('click', e => {
     socket.onmessage = ({ data }) => {
-      const sess = JSON.parse(JSON.parse(data))
+      const msg = JSON.parse(data)
 
-      if (sess.type === 'answer') {
-        localConnection.setRemoteDescription(sess)
-      } else {
-        localConnection.addIceCandidate(sess)
+      switch(msg.Type) {
+        case 'key':
+          console.log(msg.Key)
+          return
+        case 'answer':
+          localConnection.setRemoteDescription(JSON.parse(msg.Data))
+          return
+        case 'ice':
+          localConnection.addIceCandidate(JSON.parse(msg.Data))
+          return
       }
     }
     localConnection = new RTCPeerConnection({iceServers: [
@@ -37,6 +46,7 @@ function handleClient1(socket) {
     sendChannel = localConnection.createDataChannel("sendChannel");
     sendChannel.onopen = handleSendChannelStatusChange;
     sendChannel.onclose = handleSendChannelStatusChange;
+    sendChannel.onmessage = handleReceiveMessage;
 
     localConnection.onicecandidate = e => {
       if (!e.candidate) {
@@ -67,10 +77,10 @@ function handleClient2(socket) {
     }))
 
     socket.onmessage = ({ data }) => {
-      const sess = JSON.parse(JSON.parse(data))
+      const msg = JSON.parse(data)
 
-      if (sess.type === 'offer') {
-        remoteConnection.setRemoteDescription(sess)
+      if (msg.Type === 'offer') {
+        remoteConnection.setRemoteDescription(JSON.parse(msg.Data))
         remoteConnection.createAnswer()
           .then(answer => remoteConnection.setLocalDescription(answer))
           .then(() => {
@@ -81,7 +91,7 @@ function handleClient2(socket) {
             }))
           })
       } else {
-        remoteConnection.addIceCandidate(sess)
+        remoteConnection.addIceCandidate(JSON.parse(msg.Data))
       }
     }
 
@@ -121,7 +131,8 @@ function handleAddCandidateError() {
 
 function sendMessage() {
   var message = messageInputBox.value;
-  sendChannel.send(message);
+  sendChannel && sendChannel.send(message);
+  receiveChannel && receiveChannel.send(message);
 
   messageInputBox.value = "";
   messageInputBox.focus();
